@@ -135,9 +135,116 @@ Processes are usually isolated in Sandboxes to keep kernel safe
 - Process is not a program (but related to it)
 - A process is a program that's running 
 - Once a user execute a program, the OS would needd to allocate some memory from the process and CPU would starting to executing the program's instructions
+
+### Process Abstraction
 - Process is an istance of a program, running with limited rights
 - Processes conssits of two parts:
     - Address space
         - Code, data, stack, heap
     - Current activity represented by Process Control Back (PCB)
-        - Program encounter, contents of the processor register, list of open files, etc.
+        - Program encounter, contents of the processor register, list of open files, etc
+
+- All memory a process can address
+- Memory need to have a stack
+A diagram how memory is allocated for an process
+| stack |-> <-| heap | data | code |
+|            dynamic | statics     |
+
+
+``` C
+// The code itself is saved as code
+int var;       // data
+char buf[100]; // data
+
+void foo() { 
+    int a; // stack
+    ...
+}
+
+main() {
+    init b; // stack
+    char *p; // stack
+    p = new char[1000]; // heap
+    foo();
+}
+```
+*static variable can be stored in data
+
+**look deeper into stack and heap**
+
+### Address Space: Implementation
+- Usually the implementation is split between OS and HW
+    - Allocates pysical memory (for creation, growth, deletion)
+- HW performs address translation and protection
+    - Translates user address to physical addresses
+- Why split?
+
+### Process Address Space in xv6
+- Process's user memory starts at virtual addrss zero and can grop up to KERNBASE, allowing a process to address up to 2 GB of memory.
+
+| Kernel text, Data, Device Memory | heap | stack | guard page | data | text(code) |
+
+### Process Control Block (PCB)
+- OS maintains information about every process in a data structure called a Process Control Block (PCB)
+- PCB contains:
+    - Unique process identifier
+    - Process state (Running, ready, etc.)
+    - CPU state (program counter, registers, flags)
+    - Memory management infomation (e.g. page tables, segament tales, base & boun registers)
+    - CPU scheduling & accounting information
+    - Parent process
+    - Child process
+    - ...
+- PCB is known by differen names in different OS
+    - stuct proc in xv6
+    - task_struct in Linux
+
+Think about an analogy where a process represents the act of reading a book
+
+1. student = CPU
+2. program = Book
+3. Libraray reading room = Memory
+4. Librarian = OS
+
+
+``` C
+struct proc {
+    uin sz;
+    de_t* pgdir;
+    char *kstack;
+    enum // unfinished 
+```
+
+- PCB table - set of PCBS of all active processes is acrtical kernel data sturctue.
+
+- How would you implement a PCB table?
+A static array, a dynamic array that hold actual data
+
+Static array hold pointers so it's smaller
+
+Dynamic have overhead but more memory efficent, and static have smaller overhead but less memory efficent
+
+### PCB Table (ptable) in xv6
+- Fixed-size arrray of all process
+- Global variable that is loaded in memory during booting of xv6 kernel (max 64)
+
+## Syscall intro
+- syscall generates a trap (aka supevisor call)
+    - In x86  int insturction traps into kernel on a syscall
+    - In an xv6 user-level program, nt 0x40, is syscall
+### How does OS know whic code to call
+- A number is associated with each syscall
+- xv6 syscalls are very limited
+
+### xv6: Syscall Processing (simplified)
+- xv6 implements its syscalls similar to Linux, by having the software interrut number 0x40 (decimal 64) handled as a syscall
+- Based on a specific syscall number stored in %eax register, the corrseponding syscall handler is invoked
+
+syscall numbers are registered in sycall.h
+syscall handlers regestier them to underlying function.
+
+-  xv6 has its own built-in functions for fetching the arguments into kernel functions
+
+Why application programmer prefer programming according to an API rater than invoking actual system calls?
+Because API can provide abstraction and make program more portable, secure, and friendly.
+
